@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 🗄️ Database Development & Use
 
 > A hands-on course repository for learning relational and non-relational database concepts from a software developer's perspective — using Python and SQL.
@@ -46,13 +46,13 @@ By successfully completing this course, students will be able to:
 | Module 1 | Relational vs. Non-Relational Databases | ✅ Complete |
 | Module 2 | Data Modeling  | ✅ Complete |
 | Module 3 | Normalization | ✅ Complete |
-| Module 4 | Mysql installation, SQL Functions, and ERD construction | 🔄 In Progress |
-| Module 5 | Table Creation Python Access| ⏳ Upcoming |
-| Module 6 | SQL Queries Using Python | ⏳ Upcoming |
-| Module 7 | SQL Insert & Delete Using Python | ⏳ Upcoming |
-| Module 8 | Case Study Milestone #1 | ⏳ Upcoming |
-| Module 9 | Case Study Milestone #2 | ⏳ Upcoming |
-| Module 10 | Case Study Milestone #3 #4 | ⏳ Upcoming |
+| Module 4 | Mysql installation, SQL Functions, and ERD construction | ✅ Complete |
+| Module 5 | Table Creation Python Access| ✅ Complete |
+| Module 6 | SQL Queries Using Python | ✅ Complete |
+| Module 7 | SQL Insert & Delete Using Python | ✅ Complete |
+| Module 8 | Case Study Milestone #1 | ✅ Complete |
+| Module 9 | Case Study Milestone #2 | ✅ Complete |
+| Module 10 | Case Study Milestone #3 #4 | ⏳ 🔄 In Progress |
 | Module 11 | Case Study Milestone # 5 | Retrospective | ⏳ Upcoming |
 
 ---
@@ -74,9 +74,9 @@ If you're a classmate or reviewer exploring this repo, here's what to know:
 - **SQL scripts** are standalone and can be run directly against a local database
 - **Python scripts** may require a `.env` file with connection details — see setup above
 - Code is written for **readability and learning**, not necessarily production-optimized
-- Comments are included throughout to explain logic and key concepts
+- Comments are included throughout to explain logic and key concepts for grading purpose
 
-Feel free to open an issue or reach out if something isn't working!
+Feel free to open an issue | fork, or reach out if something isn't working!
 
 ---
 
@@ -92,4 +92,3 @@ This project is for educational use. No license is applied unless otherwise note
 =======
 # CSD310-306J-Database-Development-and-Use
 a place to learn database management
->>>>>>> 409cdbfa292506b11a60cfc487fba237cff267c9
