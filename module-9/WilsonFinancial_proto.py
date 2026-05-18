@@ -15,21 +15,35 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import mysql.connector
 from mysql.connector import errorcode
+from datetime import datetime
 from dotenv import dotenv_values
+from contextlib import contextmanager
 import os
 import re
-from datetime import datetime
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # ── Load .env ─────────────────────────────────────────────────────────────────
 base_dir = os.path.dirname(os.path.abspath(__file__))
 secrets  = dotenv_values(os.path.join(base_dir, ".env"))
 
-DB_CONFIG = {
-    "user":     secrets["USER"],
-    "password": secrets["PASSWORD"],
-    "host":     secrets["HOST"],
-    "database": secrets["DATABASE"],
-}
+# adding validation to ensure all required variables are present
+# and not empty without it the app may crash later with a less clear 
+# error when trying to connect to the database.
+try:
+    DB_CONFIG = {
+        "user":     secrets.get("USER", ""),
+        "password": secrets.get("PASSWORD", ""),
+        "host":     secrets.get("HOST", ""),
+        "database": secrets.get("DATABASE", ""),
+    }
+    if not all(DB_CONFIG.values()):
+        raise ValueError("Missing required .env variables (USER, PASSWORD, HOST, DATABASE)")
+except Exception as e:
+    print(f"Configuration error: {e}")
+    exit(1)
 
 # ── Colour palette ────────────────────────────────────────────────────────────
 BG        = "#1C1C1C"
@@ -44,7 +58,7 @@ SUCCESS   = "#2E7D32"
 ERROR     = "#C62828"
 WARN      = "#E65100"
 
-# ── Validation helpers ────────────────────────────────────────────────────────
+# ── Validation helpers ────────────────────────────────────���───────────────────
 def _is_date(v):
     try:
         datetime.strptime(v, "%Y-%m-%d")
@@ -185,8 +199,8 @@ TABLES = {
         "pk_seq": "SELECT COALESCE(MAX(compliance_id),0)+1 FROM COMPLIANCE_RECORD",
         "columns": [
             ("Review Date", "review_date", "entry", {"required": True, "placeholder": "YYYY-MM-DD"}),
-            ("Review Type", "review_type", "combo", {"required": True, "values": ["Account Review","Risk Assessment","Transaction Audit","Policy Review","Client Documentation","SEC Compliance Review"]}),
-            ("Outcome",     "outcome",     "combo", {"required": True, "values": ["Passed","Needs Follow-Up","Failed"]}),
+            ("Review Type", "review_type", "combo", {"required": True, "values": ["Account Review", "Risk Assessment", "Transaction Audit", "Policy Review", "Client Documentation", "SEC Compliance Review"]}),
+            ("Outcome",     "outcome",     "combo", {"required": True, "values": ["Passed", "Needs Follow-Up", "Failed"]}),
             ("Reviewed By", "reviewed_by", "entry", {"required": True}),
         ],
         "sql": "INSERT INTO COMPLIANCE_RECORD (compliance_id,review_date,review_type,outcome,reviewed_by) VALUES (%s,%s,%s,%s,%s)",
@@ -224,13 +238,13 @@ def delete_record(table_key, pk_value):
     return affected
 
 def fetch_table(table_key):
-    name = f"`{table_key}`" if table_key == "TRANSACTION" else table_key
     conn = get_connection()
-    cur  = conn.cursor()
-    cur.execute(f"SELECT * FROM {name}")
+    cur = conn.cursor()
+    cur.execute(f"SELECT * FROM `{table_key}`")  # Always use backticks
     rows = cur.fetchall()
     cols = [d[0] for d in cur.description]
-    cur.close(); conn.close()
+    cur.close()
+    conn.close()
     return cols, rows
 
 
@@ -238,7 +252,7 @@ def fetch_table(table_key):
 class WillsonApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Willson Financial — Database Entry")
+        self.title("Willson Financial DEA - Developed by Gold Team")
         self.geometry("1160x740")
         self.minsize(960, 620)
         self.configure(bg=BG)
@@ -251,6 +265,7 @@ class WillsonApp(tk.Tk):
         self.next_id_label = None
 
         self._apply_styles()
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
         self._build_ui()
         self._switch_table("CLIENT")
 
@@ -285,6 +300,28 @@ class WillsonApp(tk.Tk):
                     font=("Arial", 10, "bold"))
         s.map("Treeview", background=[("selected", GOLD_DARK)])
         s.configure("TScrollbar", background=BG2, troughcolor=BG)
+
+    def _create_button(self, parent, text, bg, fg, command):
+        """Helper to create consistently styled buttons."""
+        return tk.Button(
+            parent, text=text, bg=bg, fg=fg, font=("Arial", 10, "bold"),
+            relief="flat", cursor="hand2", padx=14, pady=8,
+            activebackground=GOLD, activeforeground=WHITE, command=command
+        )
+
+    def _create_placeholder_handlers(self, widget, placeholder):
+        """Create focus handlers for placeholder text in entry fields."""
+        def on_focus_in(event):
+            if widget.get() == placeholder:
+                widget.delete(0, "end")
+            widget.config(fg=WHITE, bg=ENTRY_BG)
+
+        def on_focus_out(event):
+            if not widget.get():
+                widget.insert(0, placeholder)
+                widget.config(fg="#666666")
+
+        return on_focus_in, on_focus_out
 
     # ── Main UI ───────────────────────────────────────────────────────────────
     def _build_ui(self):
@@ -356,7 +393,8 @@ class WillsonApp(tk.Tk):
         try:
             nid      = next_id(table_key)
             id_text  = f"Auto ID: {nid}"
-        except Exception:
+        except Exception as e:
+            logger.error(f"Database error: {e}")
             id_text  = "Auto ID: —"
         self.next_id_label = tk.Label(hdr, text=f"  [ {id_text} ]",
                                       bg=BG, fg=GOLD_DARK,
@@ -422,17 +460,9 @@ class WillsonApp(tk.Tk):
                     w.insert(0, ph)
                     w.config(fg="#666666")
 
-                    def _fi(e, widget=w, p=ph):
-                        if widget.get() == p:
-                            widget.delete(0, "end")
-                        widget.config(fg=WHITE, bg=ENTRY_BG)
-
-                    def _fo(e, widget=w, p=ph):
-                        if not widget.get():
-                            widget.insert(0, p)
-                            widget.config(fg="#666666")
-                    w.bind("<FocusIn>",  _fi)
-                    w.bind("<FocusOut>", _fo)
+                    on_focus_in, on_focus_out = self._create_placeholder_handlers(w, ph)
+                    w.bind("<FocusIn>",  on_focus_in)
+                    w.bind("<FocusOut>", on_focus_out)
                 else:
                     w.bind("<FocusIn>",  lambda e, widget=w: widget.config(bg=ENTRY_BG))
 
@@ -450,16 +480,8 @@ class WillsonApp(tk.Tk):
         # Buttons
         btn_row = tk.Frame(form, bg=BG)
         btn_row.pack(fill="x", pady=20)
-        tk.Button(btn_row, text="  ✓  Insert Record",
-                  bg=GOLD_DARK, fg=WHITE, font=("Arial", 11, "bold"),
-                  relief="flat", cursor="hand2", padx=20, pady=8,
-                  activebackground=GOLD, activeforeground=WHITE,
-                  command=self._submit).pack(side="left", padx=(0, 10))
-        tk.Button(btn_row, text="  ✕  Clear Form",
-                  bg=BG2, fg=GRAY, font=("Arial", 11),
-                  relief="flat", cursor="hand2", padx=20, pady=8,
-                  activebackground="#444444", activeforeground=WHITE,
-                  command=self._clear).pack(side="left")
+        self._create_button(btn_row, "  ✓  Insert Record", GOLD_DARK, WHITE, self._submit).pack(side="left", padx=(0, 10))
+        self._create_button(btn_row, "  ✕  Clear Form", BG2, GRAY, self._clear).pack(side="left")
 
         self.status_var = tk.StringVar()
         self.status_lbl = tk.Label(form, textvariable=self.status_var,
@@ -475,17 +497,8 @@ class WillsonApp(tk.Tk):
         toolbar.pack(fill="x")
         toolbar.pack_propagate(False)
 
-        tk.Button(toolbar, text="  ⟳  Refresh",
-                  bg=GOLD_DARK, fg=WHITE, font=("Arial", 10, "bold"),
-                  relief="flat", cursor="hand2", padx=14, pady=6,
-                  activebackground=GOLD, activeforeground=WHITE,
-                  command=self._load_view).pack(side="left", padx=10, pady=8)
-
-        tk.Button(toolbar, text="  🗑  Delete Selected",
-                  bg=ERROR, fg=WHITE, font=("Arial", 10, "bold"),
-                  relief="flat", cursor="hand2", padx=14, pady=6,
-                  activebackground="#8B0000", activeforeground=WHITE,
-                  command=self._delete_selected).pack(side="left", pady=8)
+        self._create_button(toolbar, "  ⟳  Refresh", GOLD_DARK, WHITE, self._load_view).pack(side="left", padx=10, pady=8)
+        self._create_button(toolbar, "  🗑  Delete Selected", ERROR, WHITE, self._delete_selected).pack(side="left", pady=8)
 
         self.del_status_var = tk.StringVar()
         tk.Label(toolbar, textvariable=self.del_status_var,
@@ -551,6 +564,7 @@ class WillsonApp(tk.Tk):
         for col in self.error_labels:
             self.error_labels[col].config(text="")
         for col, w in self.field_widgets.items():
+            # Only Entry widgets have a bg option; Combobox doesn't
             if isinstance(w, tk.Entry):
                 w.config(bg=ENTRY_BG)
 
@@ -704,6 +718,10 @@ class WillsonApp(tk.Tk):
             if row not in self.tree.selection():
                 self.tree.selection_set(row)
             self.ctx.post(event.x_root, event.y_root)
+
+    def _on_closing(self):
+        """Handle application cleanup when window is closed."""
+        self.destroy()
 
 
 if __name__ == "__main__":
