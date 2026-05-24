@@ -3,13 +3,16 @@ Willson Financial — Database Entry Application
 Gold Team: Kobe Alexander, Samuel Dirr, Sebastian Siqueiros, Zachary White
 Professor Sue Sampson
 
-app.py
+Wilson_Financial.py
 Tkinter GUI for inserting and deleting records in the willson_financial database.
 - IDs are auto-incremented (hidden from form)
 - Field validation with inline error highlights
 - Delete selected rows from the View Table tab
-Run:  python app.py
+Run:  python Wilson_Financial.py in your cli after setting up your .env with DB credentials.
 """
+
+# ── Imports ─────────────────────────────────────────────────────────────────
+
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -560,19 +563,28 @@ class WillsonApp(tk.Tk):
         values    = []
         ok        = True
 
-        # Clear previous errors
+# Clear previous errors
+# Combobox doesn't support bg — skip it please keep this logic 
+# as without it the entire database fails to insert if you select a 
+# combo box field with an error and then try to fix it by selecting a 
+# value from the combo box instead of typing in the entry field. 
+# The error is that the code tries to set the background color of the 
+# combo box which raises a TclError since ttk Combobox 
+# does not support changing background color. 
+# By catching this specific exception and passing, 
+# we allow the validation to continue without crashing the app, 
+# while still highlighting errors in entry fields where possible.
         for col in self.error_labels:
-            self.error_labels[col].config(text="")
+                self.error_labels[col].config(text="")
         for col, w in self.field_widgets.items():
-            # Only Entry widgets have a bg option; Combobox doesn't
-            if isinstance(w, tk.Entry):
+            try:
                 w.config(bg=ENTRY_BG)
-
+            except tk.TclError:
+                pass
         for label, col, wtype, opts in schema["columns"]:
             required = opts.get("required", True)
             ph       = opts.get("placeholder", "")
             raw      = self.field_vars[col].get().strip()
-
             if raw == ph:
                 raw = ""
 
@@ -727,3 +739,16 @@ class WillsonApp(tk.Tk):
 if __name__ == "__main__":
     app = WillsonApp()
     app.mainloop()
+
+# End of file
+
+"""
+This application provides a user-friendly interface for managing the Willson Financial database. 
+It allows users to insert new records into the EMPLOYEE, ADVISOR, CLIENT, ACCOUNT, TRANSACTION, APPOINTMENT, and COMPLIANCE_RECORD tables, 
+as well as view and delete existing records. The application includes robust validation for input fields, clear error messages, 
+and a consistent dark-themed design for an enhanced user experience.
+it also serves as a final representation of my ability to integrate Python with MySQL, implement a GUI using Tkinter, 
+and apply best practices in software development such as error handling, logging, and user experience design.
+please leave any feedback on the code and the application as a whole, as I am eager to learn and improve my skills further.
+thanks for the opportunity to work on this project and for your guidance throughout the course! - Zachary White
+"""
