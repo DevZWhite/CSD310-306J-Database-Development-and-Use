@@ -61,7 +61,7 @@ SUCCESS   = "#2E7D32"
 ERROR     = "#C62828"
 WARN      = "#E65100"
 
-# ── Validation helpers ───────────────────────────────────────────────────────
+# ── Validation helpers ────────────────────────────────────���───────────────────
 def _is_date(v):
     try:
         datetime.strptime(v, "%Y-%m-%d")
